@@ -9,6 +9,7 @@ As machine learning becomes prevalent, mitigating any unfairness present in the 
 Create a Python environment (python=3.8.11) and install dependencies in ```requirements.txt```.
 
 ### License for Optimization Solver
+Both MOSEK and CPLEX optimization packages are free for students and academics.
 ```python
 # MOSEK
 https://www.mosek.com/products/academic-licenses/
