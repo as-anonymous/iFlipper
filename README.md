@@ -18,3 +18,8 @@ https://www.mosek.com/products/academic-licenses/
 # CPLEX
 https://community.ibm.com/community/user/datascience/blogs/xavier-nodet1/2020/07/09/cplex-free-for-students
 ```
+### Datasets
+All datasets are in the IBM’s AI Fairness 360 open-source library.
+```python
+https://github.com/Trusted-AI/AIF360
+```
