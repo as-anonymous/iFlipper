@@ -10,16 +10,16 @@ from torch.nn.functional import relu
 from torch import nn
 import torch.optim as optim
 from torch.distributions.relaxed_bernoulli import RelaxedBernoulli
-from utils import measure_violations
+from utils import measure_error
 
 def Gradient(label, m, edge, w_edge, lam_high):
     """         
         Solves an unconstrained optimization problem via gradient descent.
-        If the output does not satisfy the violations limit m, it increases lambda, which controls the trade-off between fairness and accuracy, up to lam_high.
+        If the output does not satisfy the total error limit m, it increases lambda, which controls the trade-off between fairness and accuracy, up to lam_high.
 
         Args: 
             label: Labels of the data
-            m: The violations limit
+            m: The total error limit
             edge: Indices of similar pairs
             w_edge: Similarity values of similar pairs
             lam_high: Upper bound of lambda
@@ -32,9 +32,9 @@ def Gradient(label, m, edge, w_edge, lam_high):
     n_optim_steps, learning_rate = 1000, 0.1
     lam_high, lam_low, temp = lam_high, 0, 0.1
 
-    init_violations = measure_violations(label, edge, w_edge)
-    best_flips, best_violations = label.shape[0], init_violations 
-    best_flips_fail, best_violations_fail = label.shape[0], init_violations 
+    init_error = measure_error(label, edge, w_edge)
+    best_flips, best_error = label.shape[0], init_error
+    best_flips_fail, best_error_fail = label.shape[0], init_error
 
     while (lam_high-lam_low) > 0.01:
         lam = (lam_high + lam_low) / 2
@@ -56,23 +56,23 @@ def Gradient(label, m, edge, w_edge, lam_high):
         raw_label = torch.sigmoid(theta).cpu().detach().numpy()
         rounded_label = np.round(raw_label)
 
-        num_violations = measure_violations(rounded_label, edge, w_edge)
+        total_error = measure_error(rounded_label, edge, w_edge)
         num_flips = np.sum(label != rounded_label)
 
-        if num_violations <= m: 
+        if total_error <= m: 
             if num_flips < best_flips:
                 best_flips = num_flips
-                best_violations = num_violations
+                best_error = total_error
                 best_flipped_label = copy.deepcopy(rounded_label)
             lam_high = lam
         else:
-            if num_violations < best_violations_fail:
+            if total_error < best_error_fail:
                 best_flips_fail = num_flips
-                best_violations_fail = num_violations
+                best_error_fail = total_error
                 best_flipped_label_fail = copy.deepcopy(rounded_label)
             lam_low = lam
 
-        if best_violations <= m:
+        if best_error <= m:
             flipped_label = copy.deepcopy(best_flipped_label)
         else:
             flipped_label = copy.deepcopy(best_flipped_label_fail)

@@ -11,20 +11,20 @@ from sklearn.metrics import roc_auc_score
 from aif360.metrics import ClassificationMetric
 
 
-def measure_violations(label, edge, w_edge):
+def measure_error(label, edge, w_edge):
     """         
-        Computes the number volations in the data.
+        Computes the total error in the data.
         Args:
             label: Labels of the data
             edge: Indices of similar pairs
             w_edge: Similarity values of similar pairs
         Return:
-            num_violations: The number of violations
+            total_error: The total error
     """
 
-    num_violations = np.sum(w_edge * abs(label[edge[:,0]]-label[edge[:,1]]))
+    total_error = np.sum(w_edge * abs(label[edge[:,0]]-label[edge[:,1]]))
 
-    return num_violations
+    return total_error
 
 def measure_consistency(model, data, edge, w_edge):
     """         
@@ -42,13 +42,13 @@ def measure_consistency(model, data, edge, w_edge):
     
     y_hat = model.predict(data)
     
-    num_violations = measure_violations(y_hat, edge, w_edge)
+    total_error = measure_error(y_hat, edge, w_edge)
     num_similar_pairs = len(edge)
     
-    consistency_score = 1 - num_violations / num_similar_pairs
+    consistency_score = 1 - total_error / num_similar_pairs
     return consistency_score
 
-def generate_sim_matrix(data, similarity_matrix, similarity_params, similarity_type):
+def generate_sim_matrix(data, similarity_matrix, similarity_params):
     """         
         Obtains kNN-based/threshold-based similarity matrix and similar pairs.
             kNN-based: Considers (xi, xj) as a similar pair if xi is one of xj's nearest neighbors or vice versa.
@@ -58,7 +58,6 @@ def generate_sim_matrix(data, similarity_matrix, similarity_params, similarity_t
             data: Features of the data
             similarity_matrix: "knn" or "threshold" based similarity matrix
             similarity_params: Hyperparameters for similarity matrix
-            similarity_type: "binary" or "continuous" similarity matrix
 
         Return:
             w_sim: Similarity matrix
@@ -86,15 +85,10 @@ def generate_sim_matrix(data, similarity_matrix, similarity_params, similarity_t
         elif similarity_matrix == "threshold":
             indices = qo.find_near_neighbors(data[i], similarity_params["threshold"]**2)
 
-        if similarity_type == "binary":
-            w_sim[i, indices] = 1
-            w_sim[indices, i] = 1
-            w_sim[i][i] = 0
-        else:
-            distances = np.squeeze(euclidean_distances([data[i]], data[indices]))
-            w_sim[i, indices] = np.exp(-1 * similarity_params["theta"] * distances)
-            w_sim[indices, i] = np.exp(-1 * similarity_params["theta"] * distances)
-            w_sim[i][i] = 0
+        distances = np.squeeze(euclidean_distances([data[i]], data[indices]))
+        w_sim[i, indices] = np.exp(-1 * similarity_params["theta"] * distances)
+        w_sim[indices, i] = np.exp(-1 * similarity_params["theta"] * distances)
+        w_sim[i][i] = 0
 
     temp = np.argwhere(w_sim > 0)
     edge = np.squeeze(temp[np.argwhere(temp[:, 0] < temp[:, 1])])

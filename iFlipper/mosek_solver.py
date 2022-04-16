@@ -9,12 +9,12 @@ import mosek
 
 def MOSEK_Solver(label, m, w_sim, edge, ILP = False, verbose = False):
     """         
-        Solves the label flipping optimization problem for a given violations limit m using MOSEK.
+        Solves the label flipping optimization problem for a given total error limit m using MOSEK.
         If ILP is False, it solves the LP problem, otherwise solves the ILP problem.
 
         Args: 
             label: Labels of the data
-            m: The violations limit
+            m: The total error limit
             w_sim: Similarity matrix
             edge: Indices of similar pairs
             ILP: Indicates the type of problem

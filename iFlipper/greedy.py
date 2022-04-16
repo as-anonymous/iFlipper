@@ -5,15 +5,15 @@ from __future__ import print_function
 import numpy as np
 import copy
 
-from utils import measure_violations
+from utils import measure_error
 
 def Greedy(label, m, w_sim, edge, w_edge):
     """         
-        Repeatedly flips labels that reduce the number of violations the most.
+        Flips labels that reduce the total error the most.
         
         Args: 
             label: Labels of the data
-            m: The violations limit
+            m: The total error limit
             w_sim: Similarity matrix
             edge: Indices of similar pairs
             w_edge: Similarity values of similar pairs
@@ -24,9 +24,9 @@ def Greedy(label, m, w_sim, edge, w_edge):
 
     flipped_label = copy.deepcopy(label)
 
-    num_violations = measure_violations(flipped_label, edge, w_edge)
-    prev_violations = num_violations
-    while num_violations > m:
+    total_error = measure_error(flipped_label, edge, w_edge)
+    prev_error = total_error
+    while total_error > m:
         max_indices, improvement_arr = [], []
         total_improvement = 0
         
@@ -43,17 +43,17 @@ def Greedy(label, m, w_sim, edge, w_edge):
 
             total_improvement += improvement_arr[index]
             max_indices.append(index)
-            if total_improvement >= (num_violations - m):
+            if total_improvement >= (total_error - m):
                 break
 
         flipped_label[max_indices] = 1-flipped_label[max_indices]
-        num_violations = measure_violations(flipped_label, edge, w_edge)
+        total_error = measure_error(flipped_label, edge, w_edge)
 
-        # there is no more violations reduction
-        if prev_violations <= num_violations:
+        # Until there is no more error reduction
+        if prev_error <= total_error:
             print("no more reduction")
             break
         else:
-            prev_violations = num_violations
+            prev_error = total_error
             
     return flipped_label

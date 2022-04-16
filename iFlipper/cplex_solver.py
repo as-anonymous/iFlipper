@@ -8,12 +8,12 @@ import cplex
 
 def CPLEX_Solver(label, m, w_sim, edge, ILP = True):
     """         
-        Solves the label flipping optimization problem for a given violations limit m using CPLEX.
+        Solves the label flipping optimization problem for a given total error limit m using CPLEX.
         If ILP is True, it solves the ILP problem, otherwise solves the LP problem.
 
         Args: 
             label: Labels of the data
-            m: The violations limit
+            m: The total error limit
             w_sim: Similarity matrix
             edge: Indices of similar pairs
             ILP: Indicates the type of problem
@@ -24,9 +24,9 @@ def CPLEX_Solver(label, m, w_sim, edge, ILP = True):
 
     prob, x_idx = problem_setup(label, w_sim, edge, ILP)
     
-    # Set violations limit m 
-    violation = get_violation(prob)
-    prob.linear_constraints.set_rhs(violation, m)
+    # Set the total error limit m 
+    total_error_limit = get_error(prob)
+    prob.linear_constraints.set_rhs(total_error_limit, m)
 
     # Solve the problem
     prob.solve()
@@ -96,7 +96,7 @@ def problem_setup(label, w_sim, edge, ILP):
 
     return prob, x_idx
 
-def get_violation(prob):
+def get_error(prob):
     """ Finds the variables for m in the problem """
 
     return get_name(prob, "violation")

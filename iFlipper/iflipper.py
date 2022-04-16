@@ -5,7 +5,7 @@ from __future__ import print_function
 import numpy as np
 import copy
 
-from utils import measure_violations
+from utils import measure_error
 from mosek_solver import MOSEK_Solver
 from iflipper_utils import init_cluster, get_zero_cluster, get_nonzero_two_clusters, transform_with_one_cluster, transform_with_two_clusters
 
@@ -26,32 +26,33 @@ class iFlipper:
 
     def transform(self, m):
         """         
-            Solves the optimization problem of minimally flipping labels given a limit to the number of individual fairness violations.
+            Solves the optimization problem of minimally flipping labels given a limit to the total error limit m.
 
             Args: 
-                m: The violations limit
+                m: The total error limit
                 
             Return:
                 flipped_label: Flipped labels for a given m
         """
 
-        if measure_violations(self.label, self.edge, self.w_edge) == m:
+        if measure_error(self.label, self.edge, self.w_edge) == m:
             flipped_label = self.label
         else:
             optimal_label = MOSEK_Solver(self.label, m, self.w_sim, self.edge)
-            converted_label = self.converting_solution(optimal_label, self.label, self.edge)
+            converted_label = self.converting_solution(optimal_label, self.label, self.w_sim, self.edge)
             rounded_label = self.adaptive_rounding(converted_label, m, self.w_sim, self.edge)
             flipped_label = self.reverse_greedy(self.label, rounded_label, m, self.w_sim, self.edge, self.w_edge)
 
         return flipped_label
 
-    def converting_solution(self, optimal_label, label, edge):
+    def converting_solution(self, optimal_label, label, w_sim, edge):
         """         
             Converts an optimal solution for the LP problem to another optimal solution whose values are in {0, alpha, 1}.
 
             Args: 
                 optimal_label: Optimal solution for the LP problem
                 label: Labels of the data
+                w_sim: Similarity matrix
                 edge: Indices of similar pairs
                 
             Return:
@@ -63,9 +64,9 @@ class iFlipper:
         idx = (unique_values >= 1e-7) & (unique_values <= 1-1e-7)
         
         if np.sum(idx) >= 2:
-            cluster_info, cluster_nodes, cluster_nodes_num = init_cluster(optimal_label, label, edge)
+            cluster_info, cluster_nodes, cluster_nodes_num = init_cluster(optimal_label, label, w_sim, edge)
             T = len(cluster_info.keys())
-
+            
             while T > 1:
                 while True:
                     alpha = get_zero_cluster(cluster_nodes_num)
@@ -74,6 +75,7 @@ class iFlipper:
                     else:
                         cluster_info, cluster_nodes_num, cluster_nodes = transform_with_one_cluster(alpha, cluster_info, cluster_nodes_num, cluster_nodes)
                         T = len(cluster_info.keys())
+
                 if T > 1:
                     alpha, beta = get_nonzero_two_clusters(cluster_info)
                     cluster_info, cluster_nodes_num, cluster_nodes = transform_with_two_clusters(alpha, beta, cluster_info, cluster_nodes_num, cluster_nodes)    
@@ -91,7 +93,7 @@ class iFlipper:
 
             Args: 
                 opt_solution: Optimal solution for the LP problem where each value is one of {0, alpha, 1}
-                m: The violations limit
+                m: The total error limit
                 w_sim: Similarity matrix
                 edge: Indices of similar pairs
                 
@@ -123,12 +125,12 @@ class iFlipper:
 
     def reverse_greedy(self, original_label, rounded_label, m, w_sim, edge, w_edge):
         """         
-            Repeatedly "unflips" labels that increase the number of violations the least.
+            Unflips labels that increase the total error the least.
 
             Args: 
                 original_label: Original labels
                 rounded_label: Feasible binary integer solution from the adaptive rounding algorithm
-                m: The violations limit
+                m: The total error limit
                 w_sim: Similarity matrix
                 edge: Indices of similar pairs
                 w_edge: Similarity values of similar pairs
@@ -141,8 +143,8 @@ class iFlipper:
         flipped_bool = (original_label != rounded_label)
         flipped_index = np.arange(len(rounded_label))[flipped_bool]
 
-        num_violations = measure_violations(rounded_label, edge, w_edge)
-        while num_violations < m:
+        total_error = measure_error(rounded_label, edge, w_edge)
+        while total_error < m:
             flipped_label = copy.deepcopy(rounded_label)
             improvement_arr = []
             for j in range(len(rounded_label)):
@@ -157,6 +159,6 @@ class iFlipper:
             flipped_bool[flipped_index[sorted_index]] = False
             flipped_index = np.arange(len(rounded_label))[flipped_bool]
 
-            num_violations = measure_violations(rounded_label, edge, w_edge)
+            total_error = measure_error(rounded_label, edge, w_edge)
 
         return flipped_label

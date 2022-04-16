@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 
-from utils import performance_func, measure_violations
+from utils import performance_func, measure_error
 
 class Model:
         def __init__(self, model_type, x_train, y_train, edge_train, w_edge_train, x_test, y_test, edge_test, w_edge_test, x_val, y_val):
@@ -62,9 +62,9 @@ class Model:
 
                 test_accuracy = np.sum(y_hat == self.y_test) / len(y_hat)
      
-                num_violations = measure_violations(y_hat, self.edge_test, self.w_edge_test)
+                total_error = measure_error(y_hat, self.edge_test, self.w_edge_test)
                 num_similar_pairs = len(self.edge_test)
-                test_consistency_score = 1 - num_violations / num_similar_pairs
+                test_consistency_score = 1 - total_error / num_similar_pairs
 
                 train_performance = [1.0, 1.0]
                 test_performance = [test_accuracy, test_consistency_score]
